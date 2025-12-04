@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { sendWhatsAppMessage, listResellers, type PixCharge, type Reseller } from "@/lib/api"
+import { sendWhatsAppMessage, listResellers, listPixChargesByStatus, cancelPixCharge, type PixCharge, type Reseller } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
@@ -67,88 +67,7 @@ export function PixChargesByStatus() {
     console.log(`Iniciando carregamento de cobranças ${status || "todas"}`)
 
     try {
-      // Determinar qual endpoint usar com base no status
-      let endpoint = "https://efi.prime-stream.site/pix/cobrancas/todas"
-
-      if (status === "ativa" || status === "pendente") {
-        endpoint = "https://efi.prime-stream.site/pix/cobrancas/ativas"
-      } else if (status === "concluida") {
-        endpoint = "https://efi.prime-stream.site/pix/cobrancas/concluidas"
-      }
-
-      console.log(`Fazendo requisição para: ${endpoint}`)
-
-      // Fazer a requisição diretamente
-      const response = await fetch(endpoint)
-
-      if (!response.ok) {
-        throw new Error(`Erro na requisição: ${response.status}`)
-      }
-
-      // Verificar o tipo de conteúdo da resposta
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        console.warn(`Resposta não é JSON: ${contentType}`)
-        const text = await response.text()
-        console.log("Resposta em texto:", text)
-        throw new Error(`Resposta não é JSON: ${contentType}`)
-      }
-
-      // Obter o texto da resposta para debug
-      const responseText = await response.text()
-      console.log("Resposta em texto:", responseText)
-
-      // Verificar se a resposta está vazia
-      if (!responseText || responseText.trim() === "") {
-        console.log("Resposta vazia do servidor")
-        return []
-      }
-
-      // Tentar fazer o parse do JSON com tratamento de erro
-      let data
-      try {
-        data = JSON.parse(responseText)
-      } catch (parseError) {
-        console.error("Erro ao fazer parse do JSON:", parseError)
-        console.log("Texto que causou o erro:", responseText)
-        throw new Error(`Erro ao processar resposta do servidor: ${parseError.message}`)
-      }
-
-      console.log(`Resposta processada:`, data)
-
-      // Processar a resposta da API
-      let charges: PixCharge[] = []
-
-      // Verificar se a resposta tem a estrutura esperada
-      if (data.success && data.dados && data.dados.cobrancas) {
-        // Extrair as cobranças do objeto de resposta
-        charges = data.dados.cobrancas.map((cobranca: any) => ({
-          id: cobranca.txid || "",
-          txid: cobranca.txid || "",
-          valor: typeof cobranca.valor === "string" ? Number.parseFloat(cobranca.valor) : cobranca.valor || 0,
-          cpf: cobranca.devedor?.cpf || "",
-          nome: cobranca.devedor?.nome || "",
-          status: cobranca.status?.toLowerCase() || (status === "concluida" ? "concluida" : "ativa"),
-          created_at: cobranca.criacao || new Date().toISOString(),
-          codigo_pix: cobranca.location || "",
-          statusDetalhado: cobranca.statusDetalhado || "",
-        }))
-      } else {
-        console.warn("Resposta da API não contém a estrutura esperada:", data)
-      }
-
-      console.log(`Cobranças processadas (${charges.length}):`, charges)
-
-      // Formatar os dados para garantir que estejam no formato esperado
-      const formattedCharges = charges.map((charge) => ({
-        ...charge,
-        valor: typeof charge.valor === "number" ? charge.valor : Number(charge.valor) || 0,
-      }))
-
-      console.log(`Cobranças formatadas:`, formattedCharges)
-
-      // Após o processamento da resposta, adicione este log:
-      console.log(`Atualizando estado para ${status || "todas"} com ${formattedCharges.length} cobranças`)
+      const formattedCharges = await listPixChargesByStatus(status)
 
       // Atualizar o estado com base no status
       if (status === "ativa" || status === "pendente") {
@@ -933,11 +852,8 @@ Prime Stream`
                           onClick={async () => {
                             try {
                               const idToCancel = charge.txid || charge.id
-                              const response = await fetch(`https://efi.prime-stream.site/pix/cancelar/${idToCancel}`, {
-                                method: "DELETE",
-                              })
-
-                              if (response.ok) {
+                              const ok = await cancelPixCharge(idToCancel)
+                              if (ok) {
                                 toast({
                                   title: "Cobrança cancelada",
                                   description: "A cobrança PIX foi cancelada com sucesso.",
@@ -945,7 +861,7 @@ Prime Stream`
                                 // Refresh charges after cancellation
                                 fetchChargesByStatus("pendente")
                               } else {
-                                throw new Error(`Erro ao cancelar: ${response.status}`)
+                                throw new Error("Erro ao cancelar")
                               }
                             } catch (error) {
                               console.error("Erro ao cancelar cobrança:", error)

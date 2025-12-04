@@ -1,7 +1,8 @@
 // Base URLs for the APIs
-const RESELLER_API_BASE = "https://dash.prime-stream.site/api"
-const PIX_API_BASE = "https://efi.prime-stream.site"
-const WHATSAPP_API_BASE = "https://evo.prime-stream.site"
+// Proxy via Next.js route to evitar CORS no browser
+const RESELLER_API_BASE = "/api/resellers"
+const PIX_API_BASE = "mock"
+const WHATSAPP_API_BASE = "mock"
 
 // Types
 export interface Reseller {
@@ -41,122 +42,78 @@ export interface WhatsAppMessage {
   text: string
 }
 
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+let mockResellers: Reseller[] = [
+  { id: "r1", nome: "Ana", sobrenome: "Silva", cpf: "12345678901", whatsapp: "11999999999", nome_usuario: "ana.s", quantidade_clientes: 12, created_at: new Date().toISOString() },
+  { id: "r2", nome: "Bruno", sobrenome: "Souza", cpf: "23456789012", whatsapp: "21988888888", nome_usuario: "bruno", quantidade_clientes: 8, created_at: new Date().toISOString() },
+  { id: "r3", nome: "Carla", sobrenome: "Oliveira", cpf: "34567890123", whatsapp: "31977777777", nome_usuario: "carla.o", quantidade_clientes: 22, created_at: new Date().toISOString() },
+  { id: "r4", nome: "Diego", sobrenome: "Almeida", cpf: "45678901234", whatsapp: "41966666666", nome_usuario: "diego", quantidade_clientes: 5, created_at: new Date().toISOString() },
+  { id: "r5", nome: "Elaine", sobrenome: "Costa", cpf: "56789012345", whatsapp: "51955555555", nome_usuario: "elaine", quantidade_clientes: 18, created_at: new Date().toISOString() },
+  { id: "r6", nome: "Fábio", sobrenome: "Mendes", cpf: "67890123456", whatsapp: "61944444444", nome_usuario: "fabio", quantidade_clientes: 35, created_at: new Date().toISOString() },
+  { id: "r7", nome: "Gabi", sobrenome: "Pereira", cpf: "78901234567", whatsapp: "71933333333", nome_usuario: "gabi", quantidade_clientes: 11, created_at: new Date().toISOString() },
+  { id: "r8", nome: "Hugo", sobrenome: "Ramos", cpf: "89012345678", whatsapp: "81922222222", nome_usuario: "hugo", quantidade_clientes: 48, created_at: new Date().toISOString() },
+]
+
+let mockPixCharges: PixCharge[] = [
+  { id: "c1", txid: "TX-1001", valor: 49.9, cpf: "12345678901", nome: "Cliente A", status: "ativa", created_at: new Date(Date.now() - 86400000).toISOString(), codigo_pix: "COD-1001" },
+  { id: "c2", txid: "TX-1002", valor: 99.9, cpf: "23456789012", nome: "Cliente B", status: "concluida", created_at: new Date(Date.now() - 172800000).toISOString(), codigo_pix: "COD-1002" },
+  { id: "c3", txid: "TX-1003", valor: 15.0, cpf: "34567890123", nome: "Cliente C", status: "ativa", created_at: new Date().toISOString(), codigo_pix: "COD-1003" },
+  { id: "c4", txid: "TX-1004", valor: 120.0, cpf: "45678901234", nome: "Cliente D", status: "concluida", created_at: new Date(Date.now() - 3600000).toISOString(), codigo_pix: "COD-1004" },
+]
+
 // Reseller API functions
 export async function listResellers(): Promise<Reseller[]> {
-  try {
-    const response = await fetch(`${RESELLER_API_BASE}/listar-revendas`)
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`)
-    }
-    const data = await response.json()
-    // Ensure we return an array even if the API returns something else
-    return Array.isArray(data) ? data : []
-  } catch (error) {
-    console.error("Failed to fetch resellers:", error)
-    return []
-  }
+  await delay(150)
+  return [...mockResellers]
 }
 
 export async function getReseller(id: string): Promise<Reseller | null> {
-  // Skip API call for special IDs like "new"
-  if (id === "new") {
-    console.log("Skipping API call for ID 'new'")
-    return null
-  }
-
-  try {
-    const response = await fetch(`${RESELLER_API_BASE}/buscar-revenda/${id}`)
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`)
-    }
-    return await response.json()
-  } catch (error) {
-    console.error(`Failed to fetch reseller ${id}:`, error)
-    return null
-  }
+  await delay(100)
+  if (id === "new") return null
+  const item = mockResellers.find((r) => r.id === id) || null
+  return item ? { ...item } : null
 }
 
 export async function createReseller(data: Omit<Reseller, "id">): Promise<Reseller | null> {
-  try {
-    const response = await fetch(`${RESELLER_API_BASE}/criar-revenda`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    })
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`)
-    }
-    return await response.json()
-  } catch (error) {
-    console.error("Failed to create reseller:", error)
-    return null
-  }
+  await delay(150)
+  const id = `r${Math.random().toString(36).slice(2, 8)}`
+  const item: Reseller = { id, ...data, created_at: new Date().toISOString() }
+  mockResellers = [item, ...mockResellers]
+  return item
 }
 
 export async function updateReseller(id: string, data: Partial<Reseller>): Promise<Reseller | null> {
-  try {
-    const response = await fetch(`${RESELLER_API_BASE}/atualizar-revenda/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    })
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`)
-    }
-    return await response.json()
-  } catch (error) {
-    console.error(`Failed to update reseller ${id}:`, error)
-    return null
-  }
+  await delay(150)
+  const idx = mockResellers.findIndex((r) => r.id === id)
+  if (idx < 0) return null
+  const updated = { ...mockResellers[idx], ...data }
+  mockResellers[idx] = updated
+  return { ...updated }
 }
 
 export async function deleteReseller(id: string): Promise<boolean> {
-  try {
-    const response = await fetch(`${RESELLER_API_BASE}/deletar-revenda/${id}`, {
-      method: "DELETE",
-    })
-    return response.ok
-  } catch (error) {
-    console.error(`Failed to delete reseller ${id}:`, error)
-    return false
-  }
+  await delay(100)
+  const before = mockResellers.length
+  mockResellers = mockResellers.filter((r) => r.id !== id)
+  return mockResellers.length < before
 }
 
 export async function deleteAllResellers(): Promise<boolean> {
-  try {
-    const response = await fetch(`${RESELLER_API_BASE}/deletar-todas-revendas`, {
-      method: "DELETE",
-    })
-    return response.ok
-  } catch (error) {
-    console.error("Failed to delete all resellers:", error)
-    return false
-  }
+  await delay(100)
+  mockResellers = []
+  return true
 }
 
 // PIX API functions
 export async function testConnection(): Promise<boolean> {
-  try {
-    const response = await fetch(`${PIX_API_BASE}/`)
-    return response.ok
-  } catch (error) {
-    console.error("Failed to test connection:", error)
-    return false
-  }
+  await delay(50)
+  return true
 }
 
 export async function testAuthentication(): Promise<boolean> {
-  try {
-    const response = await fetch(`${PIX_API_BASE}/pix/testar-autenticacao`)
-    return response.ok
-  } catch (error) {
-    console.error("Failed to test authentication:", error)
-    return false
-  }
+  await delay(50)
+  return true
 }
 
 export async function createPixCharge(data: {
@@ -164,226 +121,55 @@ export async function createPixCharge(data: {
   cpf: string
   nome: string
 }): Promise<PixCharge | null> {
-  try {
-    const response = await fetch(`${PIX_API_BASE}/pix/gerar-cobranca`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    })
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`)
-    }
-    const result = await response.json()
-
-    // Ensure valor is a number
-    if (result && result.valor !== undefined) {
-      result.valor = typeof result.valor === "number" ? result.valor : Number(result.valor)
-    }
-
-    // Se o resultado não tiver um txid, mas tiver um id, buscar a cobrança completa
-    if (result && result.id && !result.txid) {
-      try {
-        // Aguardar um momento para garantir que a cobrança foi processada
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // Buscar a cobrança completa para obter o txid
-        const fullCharge = await getPixCharge(result.id)
-        if (fullCharge && fullCharge.txid) {
-          // Atualizar o resultado com o txid
-          result.txid = fullCharge.txid
-          result.codigo_pix = fullCharge.codigo_pix
-          result.status = fullCharge.status
-        }
-      } catch (error) {
-        console.error("Failed to fetch complete PIX charge:", error)
-      }
-    }
-
-    return result
-  } catch (error) {
-    console.error("Failed to create PIX charge:", error)
-    return null
+  await delay(300)
+  const id = `c${Math.random().toString(36).slice(2, 8)}`
+  const txid = `TX-${Math.floor(Math.random() * 100000)}`
+  const result: PixCharge = {
+    id,
+    txid,
+    valor: typeof data.valor === "number" ? data.valor : Number(data.valor),
+    cpf: data.cpf,
+    nome: data.nome,
+    status: "ativa",
+    created_at: new Date().toISOString(),
+    codigo_pix: `COD-${txid}`,
   }
+  mockPixCharges = [result, ...mockPixCharges]
+  return result
 }
 
 export async function getPixCharge(id: string): Promise<PixCharge | null> {
-  try {
-    const response = await fetch(`${PIX_API_BASE}/pix/consultar/${id}`)
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`)
-    }
-    const result = await response.json()
-
-    // Ensure valor is a number
-    if (result && result.valor !== undefined) {
-      result.valor = typeof result.valor === "number" ? result.valor : Number(result.valor)
-    }
-
-    return result
-  } catch (error) {
-    console.error(`Failed to fetch PIX charge ${id}:`, error)
-    return null
-  }
+  await delay(150)
+  const item = mockPixCharges.find((c) => c.id === id || c.txid === id) || null
+  return item ? { ...item } : null
 }
 
 export async function listPixChargesByStatus(status?: "ativa" | "pendente" | "concluida"): Promise<PixCharge[]> {
-
-  try {
-
-    // Usar os endpoints específicos com base no status
-
-    let url = `${PIX_API_BASE}/pix/cobrancas/todas`;
-
-
-
-    if (status === "ativa") {
-
-      url = `${PIX_API_BASE}/pix/cobrancas/ativas`;
-
-    } else if (status === "concluida") {
-
-      url = `${PIX_API_BASE}/pix/cobrancas/concluidas`;
-
-    }
-
-
-
-    console.log(`Fetching charges from: ${url}`);
-
-
-
-    const response = await fetch(url);
-
-
-
-    if (!response.ok) {
-
-      console.error(`API Error: ${response.status} - ${response.statusText}`);
-
-      throw new Error(`Error: ${response.status}`);
-
-    }
-
-
-
-    const data = await response.json();
-
-    console.log(`Received data:`, data);
-
-
-
-    // Verifique se a resposta contém a estrutura esperada
-
-    if (Array.isArray(data) && data.length > 0 && data[0].cobrancas) {
-
-      const charges = data[0].cobrancas;
-
-      let selectedCharges = [];
-
-
-
-      if (status === "ativa") {
-
-        selectedCharges = charges.ativas || [];
-
-      } else if (status === "concluida") {
-
-        selectedCharges = charges.concluidas || [];
-
-      } else {
-
-        // Se não houver status específico, combine as duas listas
-
-        selectedCharges = [...(charges.ativas || []), ...(charges.concluidas || [])];
-
-      }
-
-
-
-      console.log(`Received ${selectedCharges.length} charges`);
-
-      return selectedCharges.map((charge) => ({
-
-        ...charge,
-
-        valor: typeof charge.valor === "number" ? charge.valor : Number(charge.valor) || 0,
-
-      }));
-
-    }
-
-
-
-    console.warn("API did not return expected structure, returning empty array");
-
-    return [];
-
-  } catch (error) {
-
-    console.error("Failed to fetch PIX charges by status:", error);
-
-    return []; // Return empty array instead of throwing to prevent UI errors
-
-  }
-
+  await delay(150)
+  const src = [...mockPixCharges]
+  if (!status) return src
+  const normalized = status === "pendente" ? "ativa" : status
+  return src.filter((c) => c.status === normalized)
 }
 
 // Novas funções para cancelar cobranças
 export async function cancelPixCharge(txid: string): Promise<boolean> {
-  try {
-    console.log(`Canceling charge with txid: ${txid}`) // Log para debug
-
-    const response = await fetch(`${PIX_API_BASE}/pix/cancelar/${txid}`, {
-      method: "DELETE",
-    })
-
-    if (!response.ok) {
-      console.error(`API Error: ${response.status} - ${response.statusText}`)
-    }
-
-    return response.ok
-  } catch (error) {
-    console.error(`Failed to cancel PIX charge with txid ${txid}:`, error)
-    return false
-  }
+  await delay(100)
+  const idx = mockPixCharges.findIndex((c) => c.txid === txid || c.id === txid)
+  if (idx < 0) return false
+  mockPixCharges[idx] = { ...mockPixCharges[idx], status: "concluida" }
+  return true
 }
 
 export async function cancelAllActivePixCharges(): Promise<boolean> {
-  try {
-    console.log("Canceling all active charges") // Log para debug
-
-    const response = await fetch(`${PIX_API_BASE}/pix/cancelar-todas-ativas`, {
-      method: "DELETE",
-    })
-
-    if (!response.ok) {
-      console.error(`API Error: ${response.status} - ${response.statusText}`)
-    }
-
-    return response.ok
-  } catch (error) {
-    console.error("Failed to cancel all active PIX charges:", error)
-    return false
-  }
+  await delay(150)
+  mockPixCharges = mockPixCharges.map((c) => (c.status === "ativa" ? { ...c, status: "concluida" } : c))
+  return true
 }
 
 // WhatsApp API functions
 export async function sendWhatsAppMessage(data: WhatsAppMessage): Promise<boolean> {
-  try {
-    const response = await fetch(`${WHATSAPP_API_BASE}/message/sendText/prime`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "DDDEC1CE709C-4559-9B3B-00752EF3FA31": "",
-      },
-      body: JSON.stringify(data),
-    })
-    return response.ok
-  } catch (error) {
-    console.error("Failed to send WhatsApp message:", error)
-    return false
-  }
+  await delay(data.delay || 200)
+  return true
 }
 
